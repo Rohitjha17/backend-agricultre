@@ -18,8 +18,26 @@ app.use(helmet());
 
 // CORS configuration
 const corsOrigins = process.env.CORS_ORIGINS?.split(',') || ['http://localhost:3000'];
+const isDevelopment = process.env.NODE_ENV !== 'production';
+
 app.use(cors({
-  origin: corsOrigins,
+  origin: (origin, callback) => {
+    // Allow requests with no origin (mobile apps, curl, etc.)
+    if (!origin) return callback(null, true);
+    
+    // In development, allow all localhost origins
+    if (isDevelopment && origin.includes('localhost')) {
+      return callback(null, true);
+    }
+    
+    // Check if origin is in allowed list
+    if (corsOrigins.includes(origin)) {
+      return callback(null, true);
+    }
+    
+    // Allow all origins for now (can restrict in production)
+    return callback(null, true);
+  },
   credentials: true,
 }));
 
