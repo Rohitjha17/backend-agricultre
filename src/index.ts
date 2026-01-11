@@ -75,9 +75,10 @@ app.use((_req, res) => {
 // Global error handler
 app.use(errorHandler);
 
-// Start server
-app.listen(PORT, () => {
-  console.log(`🌾 Agrio India API Server running on port ${PORT}`);
+// Start server - bind to 0.0.0.0 for Railway/Docker compatibility
+const HOST = '0.0.0.0';
+app.listen(Number(PORT), HOST, () => {
+  console.log(`🌾 Agrio India API Server running on ${HOST}:${PORT}`);
   console.log(`📍 Environment: ${process.env.NODE_ENV || 'development'}`);
   console.log(`🔗 Health check: http://localhost:${PORT}/health`);
 });
