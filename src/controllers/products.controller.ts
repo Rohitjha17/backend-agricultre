@@ -160,6 +160,168 @@ export const getBestSellers = async (
   }
 };
 
+// GET /api/v1/products/new-arrivals
+export const getNewArrivals = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void | Response> => {
+  try {
+    const limit = Math.min(50, parseInt(req.query.limit as string) || 10);
+
+    const products = await prisma.product.findMany({
+      where: { isActive: true },
+      include: {
+        category: {
+          select: { id: true, name: true, nameHi: true },
+        },
+        packSizes: {
+          where: { isActive: true },
+          select: { size: true, sku: true, mrp: true, sellingPrice: true },
+        },
+      },
+      orderBy: { createdAt: 'desc' },
+      take: limit,
+    });
+
+    sendSuccess(res, products.map(product => ({
+      id: product.id,
+      name: product.name,
+      name_hi: product.nameHi,
+      slug: product.slug,
+      category: {
+        id: product.category.id,
+        name: product.category.name,
+        name_hi: product.category.nameHi,
+      },
+      images: product.images,
+      pack_sizes: product.packSizes.map(ps => ({
+        size: ps.size,
+        sku: ps.sku,
+        mrp: ps.mrp ? Number(ps.mrp) : null,
+        selling_price: ps.sellingPrice ? Number(ps.sellingPrice) : null,
+      })),
+      is_best_seller: product.isBestSeller,
+      created_at: product.createdAt,
+    })));
+  } catch (error) {
+    next(error);
+  }
+};
+
+// GET /api/v1/products/featured
+export const getFeaturedProducts = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void | Response> => {
+  try {
+    const limit = Math.min(50, parseInt(req.query.limit as string) || 10);
+
+    // Featured = best sellers with highest sales
+    const products = await prisma.product.findMany({
+      where: { isActive: true },
+      include: {
+        category: {
+          select: { id: true, name: true, nameHi: true },
+        },
+        packSizes: {
+          where: { isActive: true },
+          select: { size: true, sku: true, mrp: true, sellingPrice: true },
+        },
+      },
+      orderBy: { salesCount: 'desc' },
+      take: limit,
+    });
+
+    sendSuccess(res, products.map(product => ({
+      id: product.id,
+      name: product.name,
+      name_hi: product.nameHi,
+      slug: product.slug,
+      category: {
+        id: product.category.id,
+        name: product.category.name,
+        name_hi: product.category.nameHi,
+      },
+      images: product.images,
+      pack_sizes: product.packSizes.map(ps => ({
+        size: ps.size,
+        sku: ps.sku,
+        mrp: ps.mrp ? Number(ps.mrp) : null,
+        selling_price: ps.sellingPrice ? Number(ps.sellingPrice) : null,
+      })),
+      is_best_seller: product.isBestSeller,
+      sales_count: product.salesCount,
+    })));
+  } catch (error) {
+    next(error);
+  }
+};
+
+// GET /api/v1/products/search
+export const searchProducts = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void | Response> => {
+  try {
+    const searchQuery = req.query.q as string;
+    const limit = Math.min(50, parseInt(req.query.limit as string) || 20);
+
+    if (!searchQuery || searchQuery.trim().length < 2) {
+      return sendSuccess(res, []);
+    }
+
+    const sanitized = sanitizeSearchQuery(searchQuery);
+
+    const products = await prisma.product.findMany({
+      where: {
+        isActive: true,
+        OR: [
+          { name: { contains: sanitized, mode: 'insensitive' } },
+          { nameHi: { contains: sanitized, mode: 'insensitive' } },
+          { description: { contains: sanitized, mode: 'insensitive' } },
+          { composition: { contains: sanitized, mode: 'insensitive' } },
+        ],
+      },
+      include: {
+        category: {
+          select: { id: true, name: true, nameHi: true },
+        },
+        packSizes: {
+          where: { isActive: true },
+          select: { size: true, sku: true, mrp: true, sellingPrice: true },
+        },
+      },
+      orderBy: { salesCount: 'desc' },
+      take: limit,
+    });
+
+    sendSuccess(res, products.map(product => ({
+      id: product.id,
+      name: product.name,
+      name_hi: product.nameHi,
+      slug: product.slug,
+      category: {
+        id: product.category.id,
+        name: product.category.name,
+        name_hi: product.category.nameHi,
+      },
+      images: product.images,
+      pack_sizes: product.packSizes.map(ps => ({
+        size: ps.size,
+        sku: ps.sku,
+        mrp: ps.mrp ? Number(ps.mrp) : null,
+        selling_price: ps.sellingPrice ? Number(ps.sellingPrice) : null,
+      })),
+      is_best_seller: product.isBestSeller,
+    })));
+  } catch (error) {
+    next(error);
+  }
+};
+
 // GET /api/v1/products/recommended
 export const getRecommended = async (
   req: AuthenticatedRequest,
